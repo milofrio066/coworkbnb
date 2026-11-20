@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}{{ space.title }} · Cowork{% endblock %}
+{% block content %}
+{% set host = space.owner.business_name or space.owner.full_name %}
+<div class="detail-head">
+  <div>
+    <h1>{{ space.title }} {% if space.status != 'approved' %}<span class="badge {{ space.status.value }}">{{ space.status|label }}</span>{% endif %}</h1>
+    <div class="meta">
+      {% if count %}<span class="star">{{ '%.1f'|format(avg) }} ({{ count }})</span><span>·</span>{% endif %}
+      <span>{{ space.city }}</span><span>·</span><span class="muted">{{ space.address }}</span>
+    </div>
+  </div>
+  <button type="button" class="btn-soft btn-sm" onclick="navigator.clipboard && navigator.clipboard.writeText(location.href); this.textContent='✓ Enlace copiado'">↗ Compartir</button>
+</div>
+
+<div class="gallery n{{ [space.photos|length, 5]|min }}" id="gallery">
+  {% for p in space.photos[:5] %}<img src="/uploads/{{ p.filename }}" alt="Foto {{ loop.index }} de {{ space.title }}" data-i="{{ loop.index0 }}">{% endfor %}
+  {% if space.photos|length > 1 %}<button type="button" class="btn-sm all" data-i="0">▦ Ver las {{ space.photos|length }} fotos</button>{% endif %}
+</div>
+
+<div class="detail-body">
+  <div>
+    <div class="section host">
+      <div style="flex:1">
+        <h2>Espacio para hasta {{ space.capacity }} persona{{ 's' if space.capacity != 1 }} · anfitrión {{ host }}</h2>
+        <p class="muted" style="margin:0">{{ space.city }} · Precio por hora · {{ space.photos|length }} foto{{ 's' if space.photos|length != 1 }}</p>
+      </div>
+      <span class="avatar lg">{{ host|initials }}</span>
+    </div>
+
+    <div class="section highlights">
+      <div><span class="ico">🛡️</span><div><b>Verificado por Cowork</b><span class="muted">Nuestro equipo revisó las fotos y la información antes de publicarlo.</span></div></div>
+      <div><span class="ico">⏱️</span><div><b>Reserva por horas</b><span class="muted">Paga solo el tiempo que usas. El horario queda retenido 15 min mientras pagas.</span></div></div>
+      <div><span class="ico">📅</span><div><b>Cancelación flexible</b><span class="muted">Cancela hasta el día anterior y recibe el reembolso completo.</span></div></div>
+    </div>
+
+    <div class="section">
+      <h2>Acerca de este espacio</h2>
+      <p class="pre">{{ space.description }}</p>
+    </div>
+
+    {% if space.amenities %}
+    <div class="section">
+      <h2>Lo que este lugar ofrece</h2>
+      <div class="amenities">
+        {% for icon, name in space.amenities|amenities %}<div><span class="ico">{{ icon }}</span>{{ name }}</div>{% endfor %}
+      </div>
+      <p class="muted small" style="margin-top:14px"><strong>Servicios:</strong> {{ space.amenities }}</p>
+    </div>
+    {% endif %}
+
+    <div class="section">
+      <h2>Ubicación</h2>
+      <p>{{ space.address }}, {{ space.city }}</p>
+      <p class="muted small">La dirección exacta se comparte completa al confirmar tu reserva.</p>
+    </div>
+
+    <div class="section host">
+      <span class="avatar lg">{{ host|initials }}</span>
+      <div>
+        <h3 style="margin:0">Anfitrión: {{ host }}</h3>
+        <p class="muted" style="margin:0">{{ host_spaces }} espacio{{ 's' if host_spaces != 1 }} publicado{{ 's' if host_spaces != 1 }} en Cowork · publicado por {{ space.owner.business_name or space.owner.full_name }}</p>
+      </div>
+    </div>
+  </div>
+
+  <aside>
+    <div class="card shadow booking-card">
+      <div class="price">{{ space.price_per_hour|cop }} <small>/ hora</small></div>
+      {% if count %}<div class="small"><span class="star">{{ '%.1f'|format(avg) }}</span> · <a href="#resenas">{{ count }} reseña{{ 's' if count != 1 }}</a></div>{% endif %}
+
+      {% if space.status == 'approved' %}
+        {% if user and user.role == 'client' %}
+        <form method="post" action="/spaces/{{ space.id }}/book" id="bookform">
+          <input type="hidden" name="csrf" value="{{ csrf }}">
+          <div class="picker">
+            <label>Fecha<input type="date" name="day" id="day" min="{{ today }}" value="{{ today }}" required></label>
+            <div class="two">
+              <label>Desde<select name="start_hour" id="start">{% for h in range(0, 24) %}<option value="{{ h }}" {{ 'selected' if h == 9 }}>{{ h|hour }}</option>{% endfor %}</select></label>
+              <label>Hasta<select name="end_hour" id="end">{% for h in range(1, 25) %}<option value="{{ h }}" {{ 'selected' if h == 11 }}>{{ h|hour }}</option>{% endfor %}</select></label>
+            </div>
+          </div>
+          <div class="slots" id="slots" aria-label="Disponibilidad del día">{% for h in range(6, 24) %}<span data-h="{{ h }}">{{ h }}h</span>{% endfor %}</div>
+          <div class="legend"><span><i style="background:var(--brand)"></i>Tu selección</span><span><i style="background:var(--danger-soft)"></i>Ocupado</span><span><i style="background:var(--bg-soft)"></i>Libre</span></div>
+          <p class="small" id="clash" style="color:var(--danger);display:none">Ese rango se cruza con una reserva existente.</p>
+          <button class="btn-block" id="bookbtn">Reservar y pagar</button>
+          <p class="note-center">Aún no se te cobrará nada hasta el pago.</p>
+          <div class="breakdown">
+            <div><span class="muted" id="calc-label">{{ space.price_per_hour|cop }} × 2 horas</span><span id="calc-sub"></span></div>
+            <div><span class="muted">Tarifa de servicio Cowork</span><span>$0</span></div>
+            <div class="total"><span>Total</span><span id="calc-total"></span></div>
+          </div>
+        </form>
+        {% elif not user %}
+          <p class="muted" style="margin-top:14px"><a href="/login">Ingresa</a> o <a href="/register">crea una cuenta</a> para reservar.</p>
+          <a class="btn btn-block" href="/login">Ingresar para reservar</a>
+        {% elif user.id == space.owner_id %}
+          <p class="note" style="margin-top:14px">Este es tu espacio. Así lo ven los clientes.</p>
+          <a class="btn btn-ghost btn-block" href="/owner/spaces/{{ space.id }}/edit">Editar espacio</a>
+        {% else %}
+          <p class="muted small" style="margin-top:14px">Solo las cuentas de cliente pueden reservar.</p>
+        {% endif %}
+      {% elif space.admin_note %}<p class="note" style="margin-top:14px">Nota del administrador: {{ space.admin_note }}</p>
+      {% else %}<p class="note" style="margin-top:14px">Este espacio aún no está publicado.</p>{% endif %}
+    </div>
+  </aside>
+</div>
+
+<section class="section" id="resenas" style="border-bottom:0;margin-top:20px;border-top:1px solid var(--line)">
+  {% if count %}<div class="reviews-summary"><span class="star">{{ '%.1f'|format(avg) }}</span> · {{ count }} reseña{{ 's' if count != 1 }}</div>
+  {% else %}<h2>Reseñas</h2>{% endif %}
+  {% if not reviews %}<p class="muted">Aún no hay reseñas. ¡Sé el primero en trabajar aquí!</p>{% endif %}
+  <div class="reviews-grid">
+  {% for r in reviews %}
+    <article class="review">
+      <div class="who">
+        <span class="avatar">{{ r.author.full_name|initials }}</span>
+        <div><b>{{ r.author.full_name.split()[0] }}</b><br><span class="small muted">{{ r.created_at|fecha }}</span></div>
+        {% if user and user.role == 'admin' %}
+        <form class="inline" style="margin-left:auto" method="post" action="/admin/reviews/{{ r.id }}/delete" data-confirm="¿Eliminar esta reseña?">
+          <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn-danger btn-sm">Eliminar</button></form>
+        {% endif %}
+      </div>
+      <div class="stars" aria-label="{{ r.rating }} de 5">{{ '★' * r.rating }}<span style="color:#d3dad6">{{ '★' * (5 - r.rating) }}</span></div>
+      {% if r.comment %}<p>{{ r.comment }}</p>{% endif %}
+      {% if r.owner_reply %}<div class="reply"><strong>Respuesta del anfitrión:</strong> {{ r.owner_reply }}</div>
+      {% elif user and user.id == space.owner_id %}
+      <form class="reply" method="post" action="/reviews/{{ r.id }}/reply">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <textarea name="text" rows="2" maxlength="1000" placeholder="Responder (solo una vez)" required></textarea>
+        <button class="btn-sm">Responder</button></form>
+      {% endif %}
+    </article>
+  {% endfor %}
+  </div>
+</section>
+
+<div class="lightbox" id="lightbox" role="dialog" aria-label="Fotos">
+  <span class="count" id="lb-count"></span>
+  <button type="button" class="x" aria-label="Cerrar">✕</button>
+  <button type="button" class="p" aria-label="Anterior">‹</button>
+  <img id="lb-img" alt="">
+  <button type="button" class="n" aria-label="Siguiente">›</button>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+(() => {
+  const photos = {{ space.photos|map(attribute='filename')|list|tojson }};
+  const lb = document.getElementById('lightbox'), img = document.getElementById('lb-img'), cnt = document.getElementById('lb-count');
+  let i = 0;
+  const show = n => { i = (n + photos.length) % photos.length; img.src = '/uploads/' + photos[i]; cnt.textContent = (i + 1) + ' / ' + photos.length; };
+  document.querySelectorAll('#gallery [data-i]').forEach(el => el.addEventListener('click', () => { show(+el.dataset.i); lb.classList.add('open'); }));
+  lb.querySelector('.x').onclick = () => lb.classList.remove('open');
+  lb.querySelector('.p').onclick = () => show(i - 1);
+  lb.querySelector('.n').onclick = () => show(i + 1);
+  document.addEventListener('keydown', e => {
+    if (!lb.classList.contains('open')) return;
+    if (e.key === 'Escape') lb.classList.remove('open');
+    if (e.key === 'ArrowLeft') show(i - 1);
+    if (e.key === 'ArrowRight') show(i + 1);
+  });
+
+  const form = document.getElementById('bookform');
+  if (!form) return;
+  const price = {{ space.price_per_hour|int }};
+  const day = document.getElementById('day'), start = document.getElementById('start'), end = document.getElementById('end');
+  const fmt = v => '$' + v.toLocaleString('es-CO').replace(/,/g, '.');
+  let taken = [], past = [];
+  function paint() {
+    const s = +start.value, e = +end.value, hrs = Math.max(0, e - s);
+    document.getElementById('calc-label').textContent = fmt(price) + ' × ' + hrs + ' hora' + (hrs === 1 ? '' : 's');
+    document.getElementById('calc-sub').textContent = fmt(price * hrs);
+    document.getElementById('calc-total').textContent = fmt(price * hrs);
+    let clash = false;
+    document.querySelectorAll('#slots span').forEach(el => {
+      const h = +el.dataset.h, t = taken.includes(h), sel = h >= s && h < e;
+      if (t && sel) clash = true;
+      el.className = (t ? 'taken' : sel ? 'sel' : '') + (past.includes(h) ? ' past' : '');
+    });
+    document.getElementById('clash').style.display = clash ? 'block' : 'none';
+    document.getElementById('bookbtn').disabled = hrs <= 0 || clash;
+    document.getElementById('bookbtn').style.opacity = hrs <= 0 || clash ? .5 : 1;
+  }
+  async function load() {
+    try {
+      const r = await fetch('/spaces/{{ space.id }}/availability?day=' + day.value);
+      if (r.ok) { const d = await r.json(); taken = d.taken; past = d.past; }
+    } catch (_) {}
+    paint();
+  }
+  start.addEventListener('change', () => { if (+end.value <= +start.value) end.value = Math.min(24, +start.value + 1); paint(); });
+  end.addEventListener('change', paint);
+  day.addEventListener('change', load);
+  load();
+})();
+</script>
+{% endblock %}

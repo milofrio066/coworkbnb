@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar espacio' if space else 'Publicar un espacio' }} · Cowork{% endblock %}
+{% block content %}
+<div class="card auth" style="max-width:720px">
+  <h1>{{ 'Editar espacio' if space else 'Publicar un espacio' }}</h1>
+  {% if errors %}<div class="errors"><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+  {% if space and space.status == 'approved' %}<p class="note">Si cambias el título, la descripción, la dirección o subes fotos nuevas, el espacio vuelve a revisión del administrador.</p>{% endif %}
+  <form method="post" enctype="multipart/form-data" action="{{ '/owner/spaces/%d/edit' % space.id if space else '/owner/spaces' }}">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="field"><span>Título</span><input name="title" required value="{{ f.get('title','') }}" placeholder="Ej.: Oficina luminosa con terraza en El Poblado"></label>
+    <label class="field"><span>Descripción</span><textarea name="description" rows="5" required placeholder="Cuéntale a los coworkers qué hace especial tu espacio">{{ f.get('description','') }}</textarea></label>
+    <div class="grid2">
+      <label class="field"><span>Ciudad</span><input name="city" required value="{{ f.get('city','') }}"></label>
+      <label class="field"><span>Dirección</span><input name="address" required value="{{ f.get('address','') }}"></label>
+    </div>
+    <div class="grid2">
+      <label class="field"><span>Precio por hora (COP, sin puntos)</span><input name="price_per_hour" inputmode="numeric" required value="{{ f.get('price_per_hour','') }}" placeholder="25000"></label>
+      <label class="field"><span>Capacidad (personas)</span><input name="capacity" inputmode="numeric" required value="{{ f.get('capacity','') }}"></label>
+    </div>
+    <label class="field"><span>Servicios, separados por coma</span><input name="amenities" value="{{ f.get('amenities','') }}" placeholder="wifi, café, sala de reuniones, parqueadero"></label>
+    <label class="field"><span>Fotos (JPG/PNG/WEBP, hasta 5 MB c/u){% if not space %} — mínimo 1{% endif %}</span>
+      <input type="file" name="photos" accept="image/*" multiple id="photos"></label>
+    <div class="thumbs" id="preview"></div>
+    <button class="btn-block">{{ 'Guardar cambios' if space else 'Enviar para aprobación' }}</button>
+  </form>
+  {% if space %}
+    <hr><h3>Fotos actuales</h3>
+    <div class="thumbs">
+    {% for p in space.photos %}
+      <form method="post" action="/owner/photos/{{ p.id }}/delete" data-confirm="¿Eliminar la foto?">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <img src="/uploads/{{ p.filename }}" alt=""><button aria-label="Eliminar foto">✕</button>
+      </form>
+    {% endfor %}
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('photos').addEventListener('change', e => {
+  const box = document.getElementById('preview'); box.innerHTML = '';
+  [...e.target.files].forEach(f => { const i = document.createElement('img'); i.src = URL.createObjectURL(f); box.appendChild(i); });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}Cowork · Espacios de trabajo por horas{% endblock %}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="/static/cowork.css?v=3">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%2312684f'/%3E%3Cpath d='M9 20h14M11 20v-6a5 5 0 0 1 10 0v6' stroke='%23f2b33d' stroke-width='3' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="Cowork inicio">
+      <svg viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="9" fill="#12684f"/><path d="M9 20h14M11 20v-6a5 5 0 0 1 10 0v6" stroke="#f2b33d" stroke-width="3" fill="none" stroke-linecap="round"/></svg>
+      <span>co<b>work</b></span>
+    </a>
+    {% block searchbar %}
+    <div class="searchpill">
+      <form method="get" action="/" role="search">
+        <label><small>Dónde</small><input name="city" placeholder="Buscar ciudad" value="{{ request.query_params.get('city', '') }}"></label>
+        <label class="opt"><small>Personas</small><input name="min_capacity" type="number" min="1" placeholder="¿Cuántas?" value="{{ request.query_params.get('min_capacity', '') }}"></label>
+        <label class="opt"><small>Precio máx./h</small><input name="max_price" type="number" min="0" step="1000" placeholder="COP" value="{{ request.query_params.get('max_price', '') }}"></label>
+        <button aria-label="Buscar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>
+      </form>
+    </div>
+    {% endblock %}
+    <nav class="nav">
+      {% if not user or user.role == 'client' %}<a class="link hide-sm" href="/register?role=owner">Publica tu espacio</a>{% endif %}
+      {% if user %}
+        {% if user.role == 'client' %}<a class="link hide-sm" href="/my/bookings">Mis reservas</a>{% endif %}
+        {% if user.role == 'owner' %}<a class="link hide-sm" href="/owner">Panel de anfitrión</a>{% endif %}
+        {% if user.role == 'admin' %}<a class="link hide-sm" href="/admin">Administración</a>{% endif %}
+      {% endif %}
+      <div class="usermenu">
+        <button type="button" aria-haspopup="true" aria-expanded="false" onclick="this.nextElementSibling.classList.toggle('open');this.setAttribute('aria-expanded',this.nextElementSibling.classList.contains('open'))">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+          {% if user %}<span class="avatar">{{ user.full_name|initials }}</span>{% else %}<span class="avatar" style="background:#76857e"><svg width="16" height="16" viewBox="0 0 24 24" fill="#fff"><circle cx="12" cy="8" r="4.5"/><path d="M3 22a9 9 0 0 1 18 0z"/></svg></span>{% endif %}
+        </button>
+        <div class="menu" role="menu">
+          {% if user %}
+            <div class="who">Conectado como <b>{{ user.username }}</b> · {{ user.role|label }}</div>
+            {% if user.role == 'client' %}<a href="/">Explorar espacios</a><a href="/my/bookings">Mis reservas</a>{% endif %}
+            {% if user.role == 'owner' %}<a href="/owner">Panel de anfitrión</a><a href="/owner/spaces/new">Publicar un espacio</a>{% endif %}
+            {% if user.role == 'admin' %}<a href="/admin">Administración</a>{% endif %}
+            <div class="sep"></div>
+            <form method="post" action="/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button>Cerrar sesión ({{ user.username }})</button></form>
+          {% else %}
+            <a href="/login"><b>Ingresar</b></a>
+            <a href="/register">Crear cuenta</a>
+            <div class="sep"></div>
+            <a href="/register?role=owner">Publica tu espacio</a>
+          {% endif %}
+        </div>
+      </div>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+{% for kind, msg in flashes %}<div class="flash {{ 'err' if kind == 'error' else 'ok' }}" role="status">{{ '⚠️' if kind == 'error' else '✅' }} <span>{{ msg }}</span></div>{% endfor %}
+{% block content %}{% endblock %}
+</main>
+<footer class="site">
+  <div class="wrap">
+    <span>© Cowork · Espacios de trabajo por horas en Colombia</span>
+    <span>Pagos simulados (MVP) · Precios en COP</span>
+  </div>
+</footer>
+<script>
+document.addEventListener('click', e => {
+  document.querySelectorAll('.menu.open').forEach(m => { if (!m.parentElement.contains(e.target)) m.classList.remove('open'); });
+});
+document.querySelectorAll('form[data-confirm]').forEach(f => f.addEventListener('submit', e => { if (!confirm(f.dataset.confirm)) e.preventDefault(); }));
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

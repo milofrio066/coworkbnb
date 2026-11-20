@@ -1,0 +1,10 @@
+<h2 style="margin-top:36px">Mis disputas</h2>
+{% if not disputes %}<p class="muted">No has abierto disputas.</p>{% endif %}
+{% for d in disputes %}
+<div class="dispute {{ 'done' if d.status == 'resolved' }}">
+  <div class="row between"><b>Reserva #{{ d.booking_id }} · {{ d.booking.space.title }}</b><span class="badge {{ d.status.value }}">{{ d.status|label }}</span></div>
+  <p class="muted small" style="margin:4px 0 8px">Abierta el {{ d.created_at|fecha }}</p>
+  <p>{{ d.reason }}</p>
+  {% if d.resolution %}<blockquote><strong>Resolución del administrador:</strong> {{ d.resolution }}</blockquote>{% endif %}
+</div>
+{% endfor %}

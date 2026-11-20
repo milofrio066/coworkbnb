@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Panel de anfitrión · Cowork{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>Hola, {{ user.full_name.split()[0] }} 👋</h1><p class="muted">{{ user.business_name or 'Tu negocio' }} · Panel de anfitrión</p></div>
+  <a class="btn" href="/owner/spaces/new">+ Publicar un espacio</a>
+</div>
+
+{% set paid = bookings|selectattr('payment_status', 'equalto', 'paid')|list %}
+<div class="kpis">
+  <div class="kpi hl"><small>Ingresos confirmados</small><b>{{ paid|sum(attribute='total')|cop }}</b></div>
+  <div class="kpi"><small>Reservas pagadas</small><b>{{ paid|length }}</b></div>
+  <div class="kpi"><small>Espacios publicados</small><b>{{ spaces|selectattr('status', 'equalto', 'approved')|list|length }} / {{ spaces|length }}</b></div>
+  <div class="kpi"><small>En revisión</small><b>{{ spaces|selectattr('status', 'equalto', 'pending')|list|length }}</b></div>
+</div>
+
+<h2>Mis espacios</h2>
+{% if not spaces %}
+<div class="empty"><div class="ico">🏢</div><h3>Aún no has publicado espacios.</h3><p class="muted">Sube fotos, define tu precio por hora y nuestro equipo lo revisará.</p><a class="btn" href="/owner/spaces/new">Publicar mi primer espacio</a></div>
+{% endif %}
+<div class="mine-grid">
+{% for s in spaces %}
+<div class="mine">
+  <a href="/spaces/{{ s.id }}">{% if s.photos %}<img src="/uploads/{{ s.photos[0].filename }}" alt="">{% else %}<div class="ph"></div>{% endif %}</a>
+  <div class="body">
+    <div class="row between"><span class="badge {{ s.status.value }}">{{ s.status|label }}</span><span class="small muted">{{ s.photos|length }} fotos</span></div>
+    <h3 style="margin:4px 0 0">{{ s.title }}</h3>
+    <p class="muted small" style="margin:0">{{ s.city }} · {{ s.price_per_hour|cop }}/h · hasta {{ s.capacity }} persona{{ 's' if s.capacity != 1 }}</p>
+    {% if s.admin_note %}<p class="note" style="margin:6px 0 0">Nota del admin: {{ s.admin_note }}</p>{% endif %}
+    <div class="acts">
+      <a class="btn btn-ghost btn-sm" href="/owner/spaces/{{ s.id }}/edit">Editar</a>
+      <a class="btn btn-soft btn-sm" href="/spaces/{{ s.id }}">Ver</a>
+      <form class="inline" method="post" action="/owner/spaces/{{ s.id }}/delete" data-confirm="¿Eliminar este espacio?">
+        <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn-danger btn-sm">Eliminar</button></form>
+    </div>
+  </div>
+</div>
+{% endfor %}
+</div>
+
+<h2 style="margin-top:40px">Reservas recibidas</h2>
+{% if not bookings %}<p class="muted">Sin reservas todavía.</p>{% else %}
+<div class="table-wrap"><table>
+<thead><tr><th>Espacio</th><th>Fecha</th><th>Horario</th><th>Cliente</th><th>Total</th><th>Estado</th><th>Pago</th><th></th></tr></thead>
+<tbody>
+{% for b in bookings %}
+<tr><td><b>{{ b.space.title }}</b></td><td>{{ b.day|fecha }}</td>
+<td>{{ b.start_hour|hour }}–{{ b.end_hour|hour }}</td>
+<td>{{ b.client.full_name }}<br><small class="muted">{{ b.client.phone }}</small></td>
+<td>{{ b.total|cop }}</td><td><span class="badge {{ b.status.value }}">{{ b.status|label }}</span></td><td><span class="badge {{ b.payment_status.value }}">{{ b.payment_status|label }}</span></td>
+<td><a class="small" href="/bookings/{{ b.id }}/dispute">Abrir disputa</a></td></tr>
+{% endfor %}
+</tbody></table></div>
+{% endif %}
+{% include "_disputes.html" %}
+{% endblock %}

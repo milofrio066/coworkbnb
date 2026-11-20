@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card auth">
+  <h1>Reseñar</h1>
+  <h2>¿Cómo te fue en {{ booking.space.title }}?</h2>
+  <p class="muted">{{ booking.day|fecha }} · {{ booking.start_hour|hour }}–{{ booking.end_hour|hour }}</p>
+  <form method="post" action="/bookings/{{ booking.id }}/review">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <div class="stars-input" role="radiogroup" aria-label="Calificación">
+      {% for n in [5, 4, 3, 2, 1] %}<input type="radio" id="r{{ n }}" name="rating" value="{{ n }}" {{ 'checked' if n == 5 }}><label for="r{{ n }}" title="{{ n }} de 5">★</label>{% endfor %}
+    </div>
+    <label class="field"><span>Comentario (opcional)</span><textarea name="comment" rows="4" maxlength="1000" placeholder="Conexión, comodidad, atención del anfitrión…"></textarea></label>
+    <button class="btn-block">Publicar reseña</button>
+  </form>
+</div>
+{% endblock %}

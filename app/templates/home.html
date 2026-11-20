@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block content %}
+{% if not filtered %}
+<section class="hero">
+  <h1>Tu próximo lugar para trabajar, por horas.</h1>
+  <p>Oficinas privadas, escritorios y salas de reunión verificadas por nuestro equipo. Reserva en minutos, paga en línea y llega a trabajar.</p>
+  {% if not user %}<a class="btn" href="/register">Crear cuenta gratis</a>{% elif user.role == 'client' %}<a class="btn" href="#espacios">Ver espacios</a>{% endif %}
+  <div class="stats">
+    <div><b>{{ totals.spaces }}</b><span>espacios verificados</span></div>
+    <div><b>{{ totals.cities }}</b><span>ciudades</span></div>
+    <div><b>{{ totals.reviews }}</b><span>reseñas reales</span></div>
+  </div>
+</section>
+{% endif %}
+
+<nav class="chips" id="espacios" aria-label="Categorías">
+  {% for key, icon, name in categories %}
+  {% set qs = dict(f, amenity=key) %}
+  <a class="chip {{ 'on' if f.amenity == key }}" href="/?{% for k, v in qs.items() if v %}{{ k }}={{ v|urlencode }}&{% endfor %}">{{ icon }} {{ name }}</a>
+  {% endfor %}
+</nav>
+
+<div class="toolbar">
+  <div>
+    {% if filtered %}
+      <h2 style="margin:0">{{ spaces|length }} espacio{{ 's' if spaces|length != 1 }}{% if f.city %} en «{{ f.city }}»{% endif %}</h2>
+      <a class="small" href="/">Limpiar filtros</a>
+    {% else %}
+      <h2 style="margin:0">Espacios destacados</h2>
+    {% endif %}
+  </div>
+  <form method="get" class="row">
+    {% for k in ['city', 'min_capacity', 'max_price', 'amenity'] %}{% if f[k] %}<input type="hidden" name="{{ k }}" value="{{ f[k] }}">{% endif %}{% endfor %}
+    <select name="sort" onchange="this.form.submit()" aria-label="Ordenar">
+      {% for key, (label, _) in sorts.items() %}<option value="{{ key }}" {{ 'selected' if f.sort == key }}>{{ label }}</option>{% endfor %}
+    </select>
+  </form>
+</div>
+
+{% if not spaces %}
+<div class="empty">
+  <div class="ico">🔎</div>
+  <h3>No hay espacios publicados con esos filtros.</h3>
+  <p class="muted">Prueba con otra ciudad o quita algún filtro.</p>
+  <a class="btn btn-ghost" href="/">Ver todos</a>
+</div>
+{% endif %}
+
+<div class="listing-grid">
+{% for s in spaces %}
+  <a class="listing" href="/spaces/{{ s.id }}">
+    <div class="media">
+      <div class="slides">
+        {% for p in s.photos[:5] %}<img loading="lazy" src="/uploads/{{ p.filename }}" alt="{{ s.title }}">{% endfor %}
+      </div>
+      {% if ratings.get(s.id) and ratings[s.id][0] >= 4.8 and ratings[s.id][1] >= 2 %}<span class="tag">⭐ Favorito de coworkers</span>{% elif s.capacity >= 10 %}<span class="tag">Para equipos</span>{% endif %}
+      {% if s.photos|length > 1 %}
+        <button type="button" class="arrow prev" aria-label="Foto anterior" data-dir="-1">‹</button>
+        <button type="button" class="arrow next" aria-label="Foto siguiente" data-dir="1">›</button>
+        <div class="dots">{% for p in s.photos[:5] %}<i></i>{% endfor %}</div>
+      {% endif %}
+    </div>
+    <div class="info">
+      <div class="top"><span>{{ s.city }} · {{ s.title }}</span>{% if ratings.get(s.id) %}<span class="star">{{ '%.1f'|format(ratings[s.id][0]) }} ({{ ratings[s.id][1] }})</span>{% else %}<span class="small muted">Nuevo</span>{% endif %}</div>
+      <p>Hasta {{ s.capacity }} persona{{ 's' if s.capacity != 1 }}{% if s.amenities %} · {{ (s.amenities|amenities)[:3]|map(attribute=1)|join(', ') }}{% endif %}</p>
+      <div class="price"><b>{{ s.price_per_hour|cop }}</b> <span class="muted">/ hora</span></div>
+    </div>
+  </a>
+{% endfor %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('.listing').forEach(card => {
+  const track = card.querySelector('.slides'), dots = card.querySelectorAll('.dots i');
+  card.querySelectorAll('.arrow').forEach(b => b.addEventListener('click', e => {
+    e.preventDefault(); e.stopPropagation();
+    track.scrollBy({left: track.clientWidth * Number(b.dataset.dir), behavior: 'smooth'});
+  }));
+  if (track) track.addEventListener('scroll', () => {
+    const i = Math.round(track.scrollLeft / track.clientWidth);
+    dots.forEach((d, j) => d.style.background = j === i ? '#fff' : 'rgba(255,255,255,.6)');
+  }, {passive: true});
+});
+</script>
+{% endblock %}

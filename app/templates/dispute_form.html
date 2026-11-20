@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="card auth">
+  <h1>Abrir disputa</h1>
+  <p class="muted">Reserva #{{ booking.id }} · {{ booking.space.title }} · {{ booking.day|fecha }} {{ booking.start_hour|hour }}–{{ booking.end_hour|hour }}</p>
+  <p class="small">Un administrador de Cowork revisará el caso como árbitro y ambas partes verán la resolución.</p>
+  <form method="post" action="/bookings/{{ booking.id }}/dispute">
+    <input type="hidden" name="csrf" value="{{ csrf }}">
+    <label class="field"><span>Cuéntanos qué pasó</span><textarea name="reason" rows="6" required minlength="10" maxlength="2000"></textarea></label>
+    <button class="btn-block">Enviar al administrador</button>
+  </form>
+</div>
+{% endblock %}

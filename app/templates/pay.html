@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Confirmar y pagar · Cowork{% endblock %}
+{% block content %}
+<h1 style="margin-bottom:24px"><a href="/spaces/{{ booking.space_id }}" style="text-decoration:none" aria-label="Volver">‹</a> Confirmar y pagar</h1>
+<div class="paybox">
+  <div>
+    <span class="timer">⏳ Horario retenido por {{ minutes_left }} min</span>
+    <h2>Tu reserva</h2>
+    <div class="row between" style="margin-bottom:6px"><b>Fecha</b><span>{{ booking.day|fecha }}</span></div>
+    <div class="row between"><b>Horario</b><span>{{ booking.start_hour|hour }}–{{ booking.end_hour|hour }} ({{ booking.end_hour - booking.start_hour }} h)</span></div>
+    <hr>
+    <h2>Pagar con tarjeta</h2>
+    <div class="testcards"><b>Pago simulado:</b> usa la tarjeta <code>4242 4242 4242 4242</code>, cualquier fecha futura (MM/AA) y cualquier CVV. La <code>4000 0000 0000 0002</code> simula un rechazo y la <code>4000 0000 0000 9995</code> fondos insuficientes.</div>
+    <form method="post" action="/bookings/{{ booking.id }}/pay">
+      <input type="hidden" name="csrf" value="{{ csrf }}">
+      <label class="field"><span>Número de tarjeta</span><input name="card_number" inputmode="numeric" autocomplete="off" placeholder="4242 4242 4242 4242" required></label>
+      <div class="grid2">
+        <label class="field"><span>Vence (MM/AA)</span><input name="expiry" placeholder="12/30" autocomplete="off" required></label>
+        <label class="field"><span>CVV</span><input name="cvv" inputmode="numeric" autocomplete="off" maxlength="4" placeholder="123" required></label>
+      </div>
+      <button class="btn-block">Pagar {{ booking.total|cop }}</button>
+    </form>
+    <form method="post" action="/bookings/{{ booking.id }}/cancel" style="margin-top:10px">
+      <input type="hidden" name="csrf" value="{{ csrf }}"><button class="btn-ghost btn-block">Cancelar reserva</button></form>
+  </div>
+  <aside class="card summary">
+    <div class="row" style="flex-wrap:nowrap;align-items:flex-start">
+      {% if booking.space.photos %}<img src="/uploads/{{ booking.space.photos[0].filename }}" alt="">{% endif %}
+      <div><b>{{ booking.space.title }}</b><p class="muted small" style="margin:0">{{ booking.space.city }} · hasta {{ booking.space.capacity }} personas</p></div>
+    </div>
+    <hr style="margin:18px 0">
+    <h3>Detalle del precio</h3>
+    <div class="breakdown">
+      <div><span class="muted">{{ booking.space.price_per_hour|cop }} × {{ booking.end_hour - booking.start_hour }} h</span><span>{{ booking.total|cop }}</span></div>
+      <div><span class="muted">Tarifa de servicio</span><span>$0</span></div>
+      <div class="total"><span>Total</span><span>{{ booking.total|cop }} COP</span></div>
+    </div>
+  </aside>
+</div>
+{% endblock %}
